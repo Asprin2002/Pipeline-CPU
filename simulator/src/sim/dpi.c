@@ -19,9 +19,11 @@ extern "C" int dpi_mem_read(int addr, int len){
 		int time = get_time();
 		IFDEF(CONFIG_DIFFTEST, difftest_skip_ref());
 		return time;
-	}else{
+	}else if(addr >= 0x80000000 && addr <= 0x8fffffff){
 		unsigned int data = pmem_read(addr, len);
 		return data;
+	}else{
+		printf("你要访存的地址是%d\n", addr);
 	}
 }
 extern "C" void dpi_mem_write(int addr, int data, int len){
