@@ -1,5 +1,5 @@
 TOPNAME :=CPU
-CPU_DIR=$(CPU_HOME)/IP/pipeline-cpu
+CPU_DIR=$(CPU_HOME)/IP/mycpu
 
 
 
