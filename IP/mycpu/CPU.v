@@ -46,6 +46,18 @@ fetch u_fetch(
 
 );
 
+wire predict_taken;
+
+TournamentPredictor perdict_stage(
+    .clk(clk),
+    .rst(rst),
+    .regF_pc_i(regF_o_pc),
+    .execute_pc_i(),
+    .execute_branch(),
+    .predict_taken(predict_taken)
+
+);
+
 wire [31:0] regD_o_pc;
 wire        regD_o_commit;
 wire [31:0] regD_o_instr;
