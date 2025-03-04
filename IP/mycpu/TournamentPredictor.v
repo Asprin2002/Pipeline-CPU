@@ -7,7 +7,7 @@ module TournamentPredictor #(
   input [31:0] regF_pc_i,
   input [31:0] execute_pc_i,
   input branch_taken,
-  input execute_branch,
+  input execute_isBranch_i,
   output predict_taken
 );
 
@@ -64,7 +64,7 @@ module TournamentPredictor #(
         global_pht[i] <= 2'b01;
       
     end 
-    else if(execute_branch) begin
+    else if(execute_isBranch_i) begin
         if(branch_taken) begin
         //更新局部预测器
         lhr[local_index_exe] <= {local_history_exe[LOCAL_HIST_BITS-2 : 0], branch_taken};

@@ -74,10 +74,8 @@ module decode
     output wire [WIDTH - 1 : 0]         decode_o_valB,
     output wire [WIDTH - 1 : 0]         decode_o_imm,
 	output wire decode_o_need_jump,
+	output wire decode_isBranch_o
 
-	output wire decode_o_wb_reg_wen
-
-                      
 );
 
 wire[31:0] fetch_inst_i = regD_i_instr;
@@ -318,7 +316,7 @@ assign decode_o_need_jump = (inst_beq && ($signed(decode_o_valA) == $signed(deco
 							(inst_bgeu && ($unsigned(decode_o_valA) >= $unsigned(decode_o_valB))) ? 1'b1:
 							(inst_jal | inst_jalr) ? 1'b1 : 1'b0;
 
-
+wire decode_isBranch_o = inst_branch | inst_jal | inst_jalr;
 
 
 endmodule

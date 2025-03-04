@@ -27,6 +27,8 @@
 module control(
 
     input  wire          execute_i_need_jump,
+    input  wire          execute_branch_fix,
+    input  wire          addr_fix_i
 
     input  wire   [4:0]  decode_i_rs1,
     input  wire   [4:0]  decode_i_rs2,
@@ -61,10 +63,11 @@ wire rv32_load = rv32_lb | rv32_lh | rv32_lw | rv32_lbu | rv32_lhu;
 //加载使用冒险
 wire load_use = (regE_i_rd == decode_i_rs1 || regE_i_rd == decode_i_rs2) && (rv32_load);
 //分支预测错误
-wire branch_bubble = execute_i_need_jump;
+//wire branch_bubble = execute_i_need_jump;
+wire branch_bubble = execute_branch_fix || addr_fix_i;
 
-assign ctrl_o_regD_bubble   = branch_bubble;
-assign ctrl_o_regE_bubble   = branch_bubble || load_use;
+assign ctrl_o_regD_bubble   = branch_bubble;//branch_bubble;
+assign ctrl_o_regE_bubble   = load_use || branch_bubble;//branch_bubble || load_use;
 
 assign ctrl_o_regF_bubble   = 1'b0;
 assign ctrl_o_regM_bubble   = 1'b0;

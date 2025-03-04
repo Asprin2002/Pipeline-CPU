@@ -41,14 +41,29 @@ module execute
 	input wire [31:0]	regE_i_pc,
 	input wire  regE_i_need_jump,
 
+	input wire [31:0] regE_btb_addr_i,
+	input wire regE_predict_taken_i,
+	input wire regE_isBranch_i,
+
     output wire[WIDTH-1 : 0]     execute_o_valE,
 	output wire[WIDTH-1 : 0]     execute_mem_addr_o,
 	output wire[31:0] execute_next_pc_o,
 	output wire execute_branch_jump_o,
-	output wire execute_o_need_jump
+	output wire execute_o_need_jump,
+	output wire addr_fix_o,
+	output wire execute_branch_fix_o,
+	output wire execute_isBranch_o,
+	output wire [31:0] execute_pc_i
 
 
 );
+
+assign execute_pc_i = regE_i_pc;
+assign execute_isBranch_o = regE_isBranch_i;
+wire[31:0] execute_next_pc;
+assign addr_fix_o = (execute_next_pc != btb_addr);
+assign execute_next_pc_o = execute_next_pc;
+assign execute_branch_fix_o = (regE_i_need_jump != regE_predict_taken);
 assign execute_o_need_jump = regE_i_need_jump;
 alu alu_module(
 	.opcode_info_i     (regE_opcode_info_i    ),
@@ -64,7 +79,7 @@ alu alu_module(
 	.alu_result_o      (execute_o_valE ),
 	.mem_addr_o        (execute_mem_addr_o   ),
 	.alu_branch_jump_o (execute_branch_jump_o),
-	.pc_next_o(execute_next_pc_o)
+	.pc_next_o(execute_next_pc)
 );
 
                                                                    
