@@ -40,6 +40,7 @@ module decode
 	input wire  [31:0]  regW_i_pc,
 	//访存阶段数据前递
 	input  wire	[31:0]	regM_i_valE,
+	input  wire [31:0]  regM_i_pc,
 	input  wire [31:0]	memory_i_valM,
 	input  wire [1:0]	regM_i_wb_valD_sel,
 	input  wire [4:0] 	regM_i_wb_rd,
@@ -74,6 +75,7 @@ module decode
     output wire [WIDTH - 1 : 0]         decode_o_valB,
     output wire [WIDTH - 1 : 0]         decode_o_imm,
 	output wire decode_o_need_jump,
+	output wire decode_o_wb_reg_wen,
 	output wire decode_isBranch_o
 
 );
@@ -289,6 +291,7 @@ assign decode_rd_id_o = inst_need_rd ? rd : 5'd0;
 assign decode_o_valA = (decode_rs1_id_o  == regE_i_wb_rd && regE_i_wb_rd != 5'd0 &&  regE_i_wb_reg_wen) ? execute_i_valE : 
 						 (decode_rs1_id_o  == regM_i_wb_rd && regM_i_wb_rd != 5'd0 &&  regM_i_wb_reg_wen && regM_i_wb_valD_sel == `wb_valD_sel_valM) ? memory_i_valM 		: 
 						 (decode_rs1_id_o  == regM_i_wb_rd && regM_i_wb_rd != 5'd0 &&  regM_i_wb_reg_wen && regM_i_wb_valD_sel == `wb_valD_sel_valE) ? regM_i_valE 		: 
+						 (decode_rs1_id_o  == regM_i_wb_rd && regM_i_wb_rd != 5'd0 &&  regM_i_wb_reg_wen && regM_i_wb_valD_sel == `wb_valD_sel_valP) ? regM_i_pc + 32'd4   :
 						 (decode_rs1_id_o  == regW_i_wb_rd && regW_i_wb_rd != 5'd0 &&  regW_i_wb_reg_wen && regW_i_wb_valD_sel == `wb_valD_sel_valE) ? regW_i_valE  		: 
 						 (decode_rs1_id_o  == regW_i_wb_rd && regW_i_wb_rd != 5'd0 &&  regW_i_wb_reg_wen && regW_i_wb_valD_sel == `wb_valD_sel_valM) ? regW_i_valM  		: 
 						 (decode_rs1_id_o  == regW_i_wb_rd && regW_i_wb_rd != 5'd0 &&  regW_i_wb_reg_wen && regW_i_wb_valD_sel == `wb_valD_sel_valP) ? regW_i_pc + 32'd4   : regfile_o_valA;
@@ -296,6 +299,7 @@ assign decode_o_valA = (decode_rs1_id_o  == regE_i_wb_rd && regE_i_wb_rd != 5'd0
 assign decode_o_valB = (decode_rs2_id_o  == regE_i_wb_rd && regE_i_wb_rd != 5'd0 && regE_i_wb_reg_wen) ? execute_i_valE : 
 						 (decode_rs2_id_o  == regM_i_wb_rd && regM_i_wb_rd != 5'd0 && regM_i_wb_reg_wen && regM_i_wb_valD_sel == `wb_valD_sel_valM) ? memory_i_valM : 
 						 (decode_rs2_id_o  == regM_i_wb_rd && regM_i_wb_rd != 5'd0 && regM_i_wb_reg_wen && regM_i_wb_valD_sel == `wb_valD_sel_valE) ? regM_i_valE  :
+						 (decode_rs2_id_o  == regM_i_wb_rd && regM_i_wb_rd != 5'd0 && regM_i_wb_reg_wen && regM_i_wb_valD_sel == `wb_valD_sel_valP) ? regM_i_pc + 32'd4  :
 						 (decode_rs2_id_o  == regW_i_wb_rd && regW_i_wb_rd != 5'd0 && regW_i_wb_reg_wen && regW_i_wb_valD_sel == `wb_valD_sel_valE) ? regW_i_valE  : 
 						 (decode_rs2_id_o  == regW_i_wb_rd && regW_i_wb_rd != 5'd0 && regW_i_wb_reg_wen && regW_i_wb_valD_sel == `wb_valD_sel_valM) ? regW_i_valM  : 
 						 (decode_rs2_id_o  == regW_i_wb_rd && regW_i_wb_rd != 5'd0 &&  regW_i_wb_reg_wen && regW_i_wb_valD_sel == `wb_valD_sel_valP) ? regW_i_pc + 32'd4   : regfile_o_valB;
@@ -316,7 +320,7 @@ assign decode_o_need_jump = (inst_beq && ($signed(decode_o_valA) == $signed(deco
 							(inst_bgeu && ($unsigned(decode_o_valA) >= $unsigned(decode_o_valB))) ? 1'b1:
 							(inst_jal | inst_jalr) ? 1'b1 : 1'b0;
 
-wire decode_isBranch_o = inst_branch | inst_jal | inst_jalr;
+assign decode_isBranch_o = inst_branch | inst_jal | inst_jalr;
 
 
 endmodule

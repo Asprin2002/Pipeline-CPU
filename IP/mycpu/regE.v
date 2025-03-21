@@ -50,6 +50,10 @@ module regE(
     input  wire [31:0]      regD_i_pre_pc,
 
     input wire decode_i_need_jump,
+    input wire regD_predict_taken_i,
+    input wire decode_isBranch_i,
+    input wire regD_hit_i,
+    input wire [31:0] regD_btb_addr_i,
 
     output reg [31:0]       regE_o_valA,
     output reg [31:0]       regE_o_valB,
@@ -73,7 +77,11 @@ module regE(
     output reg              regE_o_commit,
     output reg    [31:0]    regE_o_instr,
     output reg    [31:0]    regE_o_pre_pc,
-    output reg regE_o_need_jump
+    output reg regE_o_need_jump,
+    output reg regE_predict_taken,
+    output reg regE_isBranch_o,
+    output reg regE_hit_o,
+    output reg [31:0] regE_btb_addr_o
 
     
 );
@@ -100,6 +108,10 @@ always @(posedge clk) begin
         regE_o_commit       <= 1'd0;  
         regE_o_pre_pc       <= 32'd0;
         regE_o_need_jump <= 1'b0;
+        regE_isBranch_o <= 1'b0;
+        regE_predict_taken <= 1'b0;
+		regE_hit_o    <= 1'b0;
+		regE_btb_addr_o <= 32'b0;
     end
     else begin
         //execute
@@ -124,6 +136,10 @@ always @(posedge clk) begin
         regE_o_commit       <= regD_i_commit;
         regE_o_pre_pc       <= regD_i_pre_pc;
         regE_o_need_jump <= decode_i_need_jump;
+        regE_isBranch_o <= decode_isBranch_i;
+        regE_hit_o <= regD_hit_i;
+        regE_predict_taken <= regD_predict_taken_i;
+        regE_btb_addr_o <= regD_btb_addr_i;
     end
 end
                                                                    

@@ -26,7 +26,9 @@
 
 module execute
 #(WIDTH = 32, REG_WIDTH=5)
-(
+(	
+	input wire clk,
+	input wire rst,
 
 	input wire[9 : 0]  regE_opcode_info_i,
 	input wire[9 : 0]  regE_alu_info_i,
@@ -44,26 +46,43 @@ module execute
 	input wire [31:0] regE_btb_addr_i,
 	input wire regE_predict_taken_i,
 	input wire regE_isBranch_i,
+	input wire regE_hit,
 
     output wire[WIDTH-1 : 0]     execute_o_valE,
 	output wire[WIDTH-1 : 0]     execute_mem_addr_o,
 	output wire[31:0] execute_next_pc_o,
 	output wire execute_branch_jump_o,
 	output wire execute_o_need_jump,
-	output wire addr_fix_o,
+	output wire execute_addr_fix_o,
 	output wire execute_branch_fix_o,
 	output wire execute_isBranch_o,
-	output wire [31:0] execute_pc_i
+	output wire [31:0] execute_pc_o,
+	output wire [31:0] fault_rate_o
 
 
 );
+reg [31:0] total_branch;
+reg [31:0] branch_fault;
 
-assign execute_pc_i = regE_i_pc;
-assign execute_isBranch_o = regE_isBranch_i;
+always @(posedge clk) begin
+	if(rst) begin
+		total_branch <= 0;
+		branch_fault <= 0;
+	end
+	else if (regE_isBranch_i) begin
+		total_branch <= total_branch + 1;
+		branch_fault <= branch_fault + {31'b0, execute_branch_fix_o};
+	end
+end
+
+assign fault_rate_o = (branch_fault * 100) / total_branch;
+
+assign execute_pc_o = regE_i_pc;
+assign execute_isBranch_o = | regE_branch_info_i;
 wire[31:0] execute_next_pc;
-assign addr_fix_o = (execute_next_pc != btb_addr);
+assign execute_addr_fix_o = ((regE_hit && execute_next_pc != regE_btb_addr_i) || (!regE_hit && regE_isBranch_i)); 
 assign execute_next_pc_o = execute_next_pc;
-assign execute_branch_fix_o = (regE_i_need_jump != regE_predict_taken);
+assign execute_branch_fix_o = (regE_i_need_jump != regE_predict_taken_i);
 assign execute_o_need_jump = regE_i_need_jump;
 alu alu_module(
 	.opcode_info_i     (regE_opcode_info_i    ),

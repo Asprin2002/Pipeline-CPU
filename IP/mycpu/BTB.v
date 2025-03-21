@@ -37,31 +37,39 @@ module BTB #(
     // 更新接口
     input         update_en,          // 更新使能
     input [31:0]  pc_update,          // 需要更新的PC
-    input [31:0]  target_addr_update  // 新的目标地址
+    input [31:0]  target_addr_update,  // 新的目标地址
+    input is_jump
 );
 
     // BTB存储结构：每个条目包含 {tag, target_addr}
   reg [TAG_BITS-1:0] tag_ram [0:SIZE-1];
   reg [31:0]         target_ram [0:SIZE-1];
+  reg valid_ram [0:SIZE-1];
+
+  initial begin
+    for (integer i=0; i<SIZE; i++) begin
+        tag_ram[i] = 0;
+        target_ram[i] = 0;
+        valid_ram[i] = 0;
+      end
+
+  end
   // 索引计算：用PC的中间位（避免低2位对齐问题）
-  wire [log2(SIZE)-1:0] index = pc_query[log2(SIZE)+1:2];
+  wire [5:0] index = pc_query[7:2]; // 5 = log2(SIZE) - 1;
 
   // 查询逻辑
   assign target_addr = target_ram[index];
   always @(*) begin
-    hit = (tag_ram[index] == pc_query[31:32-TAG_BITS]);
+    hit = is_jump && valid_ram[index] && (tag_ram[index] == pc_query[31:32-TAG_BITS]);
   end
-
+  wire [5:0] index_update = pc_update[7:2];
   // 更新逻辑（在EX阶段确认分支时写入）
   always @(posedge clk) begin
-    if (rst) begin
-      for (integer i=0; i<SIZE; i++) begin
-        tag_ram[i] <= 0;
-        target_ram[i] <= 0;
-      end
-    end else if (update_en) begin
+      
+    if (update_en) begin
       tag_ram[index_update] <= pc_update[31:32-TAG_BITS];
       target_ram[index_update] <= target_addr_update;
+      valid_ram[index_update] <= 1'b1;
     end
   end
                                                                    

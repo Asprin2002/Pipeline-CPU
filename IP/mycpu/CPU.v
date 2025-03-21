@@ -16,6 +16,11 @@ wire [31:0] select_pc_o_pc;
 select_pc u_select_pc(
     .fetch_i_pre_pc      	(fetch_o_pre_pc       ),    
     .execute_next_pc_i     	(execute_next_pc_o       ),
+    .execute_addr_fix_i(execute_addr_fix_o),
+    .execute_branch_fix_i(execute_branch_fix_o),
+    .predict_taken(predict_taken),
+    .btb_hit(hit),
+    .btb_pre_pc(target_addr),
 	.execute_branch_jump_i(execute_o_need_jump),
 
     .select_pc_o_pc      	(select_pc_o_pc       )
@@ -47,21 +52,51 @@ fetch u_fetch(
 );
 
 wire predict_taken;
+wire local_pre;
+wire global_pre;
+wire isGlobal;
+wire is_j;
 
 TournamentPredictor perdict_stage(
     .clk(clk),
     .rst(rst),
     .regF_pc_i(regF_o_pc),
-    .execute_pc_i(),
-    .execute_branch(),
-    .predict_taken(predict_taken)
+    .execute_pc_i(execute_pc_o),
+    .branch_taken(execute_o_need_jump),
+    .execute_isBranch_i(execute_isBranch_o),
+    .predict_taken(predict_taken),
+    .local_pre(local_pre),
+    .global_pre(global_pre),
+    .isGlobal(isGlobal),
+    .fetch_inst_i(fetch_o_instr),
+    .is_jump(is_j)
 
 );
+
+wire [31:0] target_addr;
+wire hit;
+
+BTB btb_module(
+    .clk(clk),
+    .rst(rst),
+    .pc_query(regF_o_pc),
+    .target_addr(target_addr),
+    .hit(hit),
+    .update_en(execute_addr_fix_o),
+    .pc_update(execute_pc_o),
+    .target_addr_update(execute_next_pc_o),
+    .is_jump(is_j)
+);
+
+
 
 wire [31:0] regD_o_pc;
 wire        regD_o_commit;
 wire [31:0] regD_o_instr;
 wire [31:0] regD_o_pre_pc;
+wire regD_predict_taken_o;
+wire regD_hit_o;
+wire [31:0] regD_btb_addr_o;
 
 regD u_regD(
     .clk            	(clk             ),
@@ -75,7 +110,13 @@ regD u_regD(
     .regD_o_pc      	(regD_o_pc       ),
 	.regD_o_pre_pc  	(regD_o_pre_pc   ),
     .regD_o_commit  	(regD_o_commit   ),
-    .regD_o_instr       (regD_o_instr)
+    .regD_o_instr       (regD_o_instr),
+    .predict_taken(predict_taken),
+    .hit(hit),
+    .btb_addr_i(target_addr),
+    .regD_predict_taken_o(regD_predict_taken_o),
+    .regD_hit_o(regD_hit_o),
+    .regD_btb_addr_o(regD_btb_addr_o)
 );
 
 wire [31:0] decode_o_valA;
@@ -94,6 +135,7 @@ wire [4:0]  decode_o_rs2;
 wire [11:0] decode_csr_id_o;
 
 wire decode_o_need_jump;
+wire decode_isBranch_o;
 
 decode u_decode(
     .clk                     	(clk                      ),
@@ -112,6 +154,7 @@ decode u_decode(
     .regW_i_pc  (regW_o_pc),
 	//访存阶段数据前递
 	.regM_i_valE(regM_o_valE),
+    .regM_i_pc(regM_o_pc),
 	.memory_i_valM(memory_o_valM),
 	.regM_i_wb_valD_sel(regM_o_wb_valD_sel),
 	.regM_i_wb_rd(regM_o_wb_rd),
@@ -137,7 +180,8 @@ decode u_decode(
     .decode_rs1_id_o       (decode_o_rs1),
     .decode_rs2_id_o( decode_o_rs2),
 	.decode_csr_id_o(decode_csr_id_o),
-    .decode_o_need_jump(decode_o_need_jump)
+    .decode_o_need_jump(decode_o_need_jump),
+    .decode_isBranch_o(decode_isBranch_o)
 );
 
 wire [31:0] regE_o_valA;
@@ -160,6 +204,11 @@ wire[ 7:0]  regE_load_store_info_o;
 wire[ 5:0]  regE_csr_info_o;
 
 wire regE_o_need_jump;
+
+wire regE_predict_taken;
+wire regE_isBranch_o;
+wire regE_hit_o;
+wire [31:0] regE_btb_addr_o;
 
 regE u_regE(
     .clk                   	(clk                    ),
@@ -184,6 +233,10 @@ regE u_regE(
     .regD_i_pc             	(regD_o_pc              ),
     .regD_i_commit         	(regD_o_commit          ),
     .regD_i_pre_pc         	(regD_o_pre_pc          ),
+    .regD_predict_taken_i   (regD_predict_taken_o),
+    .decode_isBranch_i      (decode_isBranch_o),
+    .regD_hit_i             (regD_hit_o),
+    .regD_btb_addr_i        (regD_btb_addr_o),
 
     .regE_o_valA           	(regE_o_valA            ),
     .regE_o_valB           	(regE_o_valB            ),
@@ -203,7 +256,11 @@ regE u_regE(
 	.regE_load_store_info_o(regE_load_store_info_o),
 	.regE_csr_info_o(regE_csr_info_o),
 
-    .regE_o_need_jump(regE_o_need_jump)
+    .regE_o_need_jump(regE_o_need_jump),
+    .regE_predict_taken(regE_predict_taken),
+    .regE_isBranch_o(regE_isBranch_o),
+    .regE_hit_o(regE_hit_o),
+    .regE_btb_addr_o(regE_btb_addr_o)
 );
 
 
@@ -212,6 +269,12 @@ wire [31:0] execute_o_valE;
 wire [31:0] execute_next_pc_o;
 wire execute_branch_jump_o;
 wire execute_o_need_jump;
+wire execute_addr_fix_o;
+wire execute_branch_fix_o;
+wire execute_isBranch_o;
+wire [31:0] execute_pc_o;
+
+wire [31:0] fault_rate_o;
 
 
 
@@ -222,17 +285,29 @@ execute u_execute(
 	.regE_branch_info_i(regE_branch_info_o),
 	.regE_load_store_info_i(regE_load_store_info_o),
     .regE_i_need_jump(regE_o_need_jump),
+    .clk(clk),
+    .rst(rst),
 
     .regE_i_valA         	(regE_o_valA          ),
     .regE_i_valB         	(regE_o_valB          ),
     .regE_i_imm          	(regE_o_imm           ),
     .regE_i_pc           	(regE_o_pc            ),
     .regE_i_pre_pc       	(regE_o_pre_pc        ),
+    .regE_btb_addr_i(regE_btb_addr_o),
+    .regE_isBranch_i(regE_isBranch_o),
+    .regE_hit(regE_hit_o),
+    .regE_predict_taken_i(regE_predict_taken),
     .execute_mem_addr_o   	(execute_mem_addr_o     ),
     .execute_o_valE      	(execute_o_valE       ),
 	.execute_branch_jump_o(execute_branch_jump_o),
 	.execute_next_pc_o(execute_next_pc_o),
-    .execute_o_need_jump(execute_o_need_jump)
+    .execute_o_need_jump(execute_o_need_jump),
+    .execute_addr_fix_o(execute_addr_fix_o),
+    .execute_branch_fix_o(execute_branch_fix_o),
+    .execute_isBranch_o(execute_isBranch_o),
+    .execute_pc_o(execute_pc_o),
+    .fault_rate_o(fault_rate_o)
+
 
 );
 
@@ -407,6 +482,8 @@ wire ctrl_o_regW_bubble;
 
 control u_ctrl(
     .execute_i_need_jump 	(execute_branch_jump_o  ),
+    .execute_branch_fix_i   (execute_branch_fix_o),
+    .execute_addr_fix_i     (execute_addr_fix_o),
     .decode_i_rs1        	(decode_o_rs1         ),
     .decode_i_rs2        	(decode_o_rs2         ),
     .regE_i_rd           	(regE_o_wb_rd            ),

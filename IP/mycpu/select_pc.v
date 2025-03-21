@@ -10,8 +10,8 @@ module select_pc(
 	input wire execute_branch_jump_i,
     output wire [31:0] select_pc_o_pc
 );
-wire fix = addr_fix_i | decode_branch_fix;
+wire fix = execute_addr_fix_i | execute_branch_fix_i;
 assign select_pc_o_pc =  fix ? execute_next_pc_i :
-                         (predict_taken & hit) ? btb_pre_pc : fetch_i_pre_pc;
+                         (predict_taken & btb_hit) ? btb_pre_pc : fetch_i_pre_pc;
                          
 endmodule
